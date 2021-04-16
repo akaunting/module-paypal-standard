@@ -1,7 +1,7 @@
 <?php
 
 Route::group([
-    'prefix' => 'signed',
+    'prefix' => '{company_id}/signed',
     'middleware' => 'signed',
     'namespace' => 'Modules\PaypalStandard\Http\Controllers'
 ], function () {

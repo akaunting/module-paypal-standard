@@ -1,7 +1,7 @@
 <?php
 
 Route::group([
-    'prefix' => 'portal',
+    'prefix' => '{company_id}/portal',
     'middleware' => 'portal',
     'namespace' => 'Modules\PaypalStandard\Http\Controllers'
 ], function () {
