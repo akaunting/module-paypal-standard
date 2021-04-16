@@ -1,9 +1,13 @@
 <?php
 
-Route::group([
-    'prefix' => '{company_id}/signed',
-    'middleware' => 'signed',
-    'namespace' => 'Modules\PaypalStandard\Http\Controllers'
-], function () {
-    Route::get('invoices/{invoice}/paypal-standard', 'Payment@show')->name('signed.invoices.paypal-standard.show');
+use Illuminate\Support\Facades\Route;
+
+/**
+ * 'signed' middleware and 'signed/paypal-standard' prefix applied to all routes (including names)
+ *
+ * @see \App\Providers\Route::register
+ */
+
+Route::signed('paypal-standard', function () {
+    Route::get('invoices/{invoice}', 'Payment@show')->name('invoices.show');
 });
