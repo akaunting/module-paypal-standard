@@ -1,0 +1,286 @@
+name: Releases
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  check-json-version:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout module
+        uses: actions/checkout@v2
+
+      - id: set_var
+        run: |
+          content=`cat ./module.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=moduleJson::$content"
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Check version equality
+        run: |
+          if [ "${{fromJson(steps.set_var.outputs.moduleJson).version}}" == $RELEASE_VERSION ]; then
+              exit 0
+          else
+              exit 1
+          fi
+
+  tests:
+
+    needs: [check-json-version]
+
+    name: PHP ${{ matrix.php }}
+
+    runs-on: ubuntu-20.04
+
+    strategy:
+      matrix:
+        php: ['7.3', '7.4']
+
+    steps:
+      - name: Checkout Akaunting
+        uses: actions/checkout@v2
+        with:
+          repository: akaunting/akaunting
+
+      - name: Checkout module to tmp path
+        uses: actions/checkout@v2
+        with:
+          path: tmp-path-for-module
+
+      - id: set_var
+        run: |
+          content=`cat ./tmp-path-for-module/module.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=moduleJson::$content"
+
+      - name: Create module folder name which is PascalCase
+        run: |
+          MODULE_FOLDER_NAME=$(echo -n ${{fromJson(steps.set_var.outputs.moduleJson).alias}} | sed -r 's/(^|-)([a-z])/\U\2/g')
+          echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
+
+      - name: Remove the tmp folder
+        run: rm -rf tmp-path-for-module
+
+      - name: Checkout module
+        uses: actions/checkout@v2
+        with:
+          path: modules/${{ env.MODULE_FOLDER_NAME }}
+
+      - name: Cache Composer
+        uses: actions/cache@v1
+        with:
+          path: ~/.composer/cache/files
+          key: php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, ctype, dom, fileinfo, intl, gd, json, mbstring, pdo, pdo_sqlite, openssl, sqlite, xml, zip
+          coverage: none
+
+      - name: Copy .env
+        run: cp .env.testing .env
+
+      - name: Install Composer
+        run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; composer test ; cd ../.. ; composer test
+
+      - name: Execute tests
+        run: php artisan test --parallel
+
+  build:
+
+    needs: [tests]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout Akaunting
+        uses: actions/checkout@v2
+        with:
+          repository: akaunting/akaunting
+
+      - name: Checkout module to tmp path
+        uses: actions/checkout@v2
+        with:
+          path: tmp-path-for-module
+
+      - id: set_var
+        run: |
+          content=`cat ./tmp-path-for-module/module.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=moduleJson::$content"
+
+      - name: Remove the tmp folder
+        run: rm -rf tmp-path-for-module
+
+      - name: Create module folder name which is PascalCase
+        run: |
+          MODULE_FOLDER_NAME=$(echo -n ${{fromJson(steps.set_var.outputs.moduleJson).alias}} | sed -r 's/(^|-)([a-z])/\U\2/g')
+          echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
+
+      - name: Checkout module
+        uses: actions/checkout@v2
+        with:
+          path: modules/${{ env.MODULE_FOLDER_NAME }}
+
+      - name: Cache Composer
+        uses: actions/cache@v1
+        with:
+          path: ~/.composer/cache/files
+          key: php-7.3-composer-${{ hashFiles('composer.json') }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.3'
+          extensions: bcmath, ctype, dom, fileinfo, intl, gd, json, mbstring, pdo, pdo_sqlite, openssl, sqlite, xml, zip
+          coverage: none
+
+      - name: Copy .env
+        run: cp .env.testing .env
+
+      - name: Install Composer
+        run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; composer install --no-dev ; cd ../.. ; composer install --no-dev
+
+      - name: Run npm install for Akaunting
+        run: npm install
+
+      - name: Run npm install for the module
+        run: |
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+          npm install
+
+      - name: Compile module assets
+        run: |
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+          npm run production
+
+      - name: Install zip
+        run: sudo apt install zip
+
+      - name: Delete sass folder
+        run: |
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets"
+          rm -rf sass
+
+      - name: Delete mix-manifest.json file
+        run: |
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+          rm -f mix-manifest.json
+
+      - name: Delete non .min.js files
+        run: |
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets/js"
+          find . -type f ! -name '*.min.js' -delete
+
+      - name: ZIP
+        run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; zip -r ../../final-build.zip . * -x '*.git*' -x '*node_modules*' -x 'composer.json' -x 'composer.lock' -x 'crowdin.yml' -x 'package-lock.json' -x 'package.json' -x 'README.md' -x 'webpack.mix.js' ; cd ..
+        
+      - uses: actions/upload-artifact@master
+        with:
+          name: final-build
+          path: ${{ github.workspace }}/final-build.zip
+
+  upload-to-site:
+
+    needs: [build]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: final-build
+
+      - name: Install unzip
+        run: sudo apt install unzip
+
+      - name: UNZIP
+        run: unzip final-build.zip -d src
+
+      - id: set_var
+        run: |
+          content=`cat ./src/module.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=moduleJson::$content"
+
+      - name: Rename zip archive
+        run: mv final-build.zip ${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip
+
+      - name: Upload to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload to Akaunting Site
+        run: |
+          curl \
+            -H "Authorization: Bearer ${{ secrets.AKAUNTING_SITE_AUTH_BEARER }}" \
+            -H "Module-Version: ${{fromJson(steps.set_var.outputs.moduleJson).version}}" \
+            -F "file=@./${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip" \
+            --retry 5 \
+            --retry-delay 60 \
+            ${{ secrets.AKAUNTING_SITE_API_DOMAIN }}/${{ secrets.AKAUNTING_SITE_API_MODULES_ENDPOINT }}/${{fromJson(steps.set_var.outputs.moduleJson).alias}}
+
+  update-cloud:
+
+    needs: [upload-to-site]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: final-build
+
+      - name: Install unzip
+        run: sudo apt install unzip
+
+      - name: UNZIP
+        run: unzip final-build.zip -d src
+
+      - id: set_var
+        run: |
+          content=`cat ./src/module.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=moduleJson::$content"
+
+      - name: Update the Cloud
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AKAUNTING_CLOUD_HOST }}
+          username: ${{ secrets.AKAUNTING_CLOUD_USERNAME }}
+          key: ${{ secrets.AKAUNTING_CLOUD_SSH_PRIVATE }}
+          script: |
+            cd /${{ secrets.AKAUNTING_CLOUD_PATH }}
+            ${{ secrets.AKAUNTING_CLOUD_UPDATE_COMMAND }} ${{fromJson(steps.set_var.outputs.moduleJson).alias}} 1 ${{fromJson(steps.set_var.outputs.moduleJson).version}}

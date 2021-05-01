@@ -39,8 +39,8 @@
                 <input type="hidden" name="no_note" value="1" />
                 <input type="hidden" name="no_shipping" value="1" />
                 <input type="hidden" name="charset" value="utf-8" />
-                <input type="hidden" name="return" value="{{ route('portal.invoices.paypal-standard.return', $invoice->id) }}" />
-                <input type="hidden" name="notify_url" value="{{ route('portal.invoices.paypal-standard.complete', $invoice->id) }}" />
+                <input type="hidden" name="return" value="{{ route('portal.paypal-standard.invoices.return', $invoice->id) }}" />
+                <input type="hidden" name="notify_url" value="{{ route('portal.paypal-standard.invoices.complete', $invoice->id) }}" />
                 <input type="hidden" name="cancel_return" value="{{ $invoice_url }}" />
                 <input type="hidden" name="paymentaction" value="{{ $setting['transaction'] }}" />
                 <input type="hidden" name="custom" value="{{ $invoice->id }}" />

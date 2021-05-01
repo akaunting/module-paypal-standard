@@ -1,10 +1,14 @@
 <?php
 
-Route::group([
-    'prefix' => 'portal',
-    'middleware' => 'guest',
-    'namespace' => 'Modules\PaypalStandard\Http\Controllers'
-], function () {
-    Route::post('invoices/{invoice}/paypal-standard/return', 'Payment@return')->name('portal.invoices.paypal-standard.return');
-    Route::post('invoices/{invoice}/paypal-standard/complete', 'Payment@complete')->name('portal.invoices.paypal-standard.complete');
-});
+use Illuminate\Support\Facades\Route;
+
+/**
+ * 'guest' middleware and 'portal/paypal-standard' prefix applied to all routes (including names)
+ *
+ * @see \App\Providers\Route::register
+ */
+
+Route::portal('paypal-standard', function () {
+    Route::get('invoices/{invoice}/complete', 'Payment@return')->name('invoices.return');
+    Route::post('invoices/{invoice}/complete', 'Payment@complete')->name('invoices.complete');
+}, ['middleware' => 'guest']);
