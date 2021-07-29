@@ -23,7 +23,11 @@ class Payment extends PaymentController
 
         $this->setContactFirstLastName($invoice);
 
-        $setting['action'] = ($setting['mode'] == 'live') ? 'https://www.paypal.com/cgi-bin/webscr' : 'https://www.sandbox.paypal.com/cgi-bin/webscr';
+        $setting['action'] = 'https://www.paypal.com/cgi-bin/webscr';
+
+        if (isset($setting['mode']) && $setting['mode'] == 'sandbox') {
+            $setting['action'] = 'https://www.sandbox.paypal.com/cgi-bin/webscr';
+        }
 
         $invoice_url = $this->getInvoiceUrl($invoice);
 
