@@ -23,7 +23,7 @@
                 <?php $i = 1; ?>
                 @foreach ($invoice->items as $item)
                     <input type="hidden" name="item_name_{{ $i }}" value="{{ $item->name }}" />
-                    <input type="hidden" name="amount_{{ $i }}" value="{{ $item->price }}" />
+                    <input type="hidden" name="amount_{{ $i }}" value="{{ $invoice->amount }}" />
                     <input type="hidden" name="quantity_{{ $i }}" value="{{ $item->quantity }}" />
                     <?php $i++; ?>
                 @endforeach
