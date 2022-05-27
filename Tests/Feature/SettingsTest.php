@@ -6,26 +6,20 @@ use Tests\Feature\FeatureTestCase;
 
 class SettingsTest extends FeatureTestCase
 {
-    public function testItShouldSeePaypalStandardInSettingsListPage()
-    {
-        $this->loginAs()
-            ->get(route('settings.index'))
-            ->assertStatus(200)
-            ->assertSeeText(trans('paypal-standard::general.description'));
-    }
-
     public function testItShouldSeePaypalStandardSettingsUpdatePage()
     {
         $this->loginAs()
             ->get(route('settings.module.edit', ['alias' => 'paypal-standard']))
-            ->assertStatus(200);
+            ->assertOk()
+            ->assertSeeText(trans('paypal-standard::general.name'))
+            ->assertSeeText(trans('paypal-standard::general.description'));
     }
 
     public function testItShouldUpdatePaypalStandardSettings()
     {
         $this->loginAs()
             ->patch(route('settings.module.edit', ['alias' => 'paypal-standard']), $this->getRequest())
-            ->assertStatus(200);
+            ->assertOk();
 
         $this->assertFlashLevel('success');
     }

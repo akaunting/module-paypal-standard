@@ -10,5 +10,5 @@ use Illuminate\Support\Facades\Route;
 
 Route::portal('paypal-standard', function () {
     Route::get('invoices/{invoice}/complete', 'Payment@return')->name('invoices.return');
-    Route::post('invoices/{invoice}/complete', 'Payment@complete')->name('invoices.complete');
+    Route::post('invoices/{invoice}/complete', 'Payment@complete')->name('invoices.confirm');
 }, ['middleware' => 'guest']);

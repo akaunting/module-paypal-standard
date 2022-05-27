@@ -1,6 +1,6 @@
 {
     "alias": "paypal-standard",
-    "icon": "fab fa-paypal",
+    "icon": "simple-icons-paypal",
     "version": "2.0.1",
     "active": 1,
     "providers": [
@@ -14,7 +14,7 @@
     "widgets": [],
     "settings": [
         {
-            "type": "textGroup",
+            "type": "text",
             "name": "name",
             "title": "general.name",
             "icon": "fa fa-font",
@@ -24,7 +24,7 @@
             "rules": "required|string"
         },
         {
-            "type": "textGroup",
+            "type": "text",
             "name": "email",
             "title": "paypal-standard::general.form.email",
             "icon": "envelope",
@@ -34,7 +34,7 @@
             "rules": "required|email"
         },
         {
-            "type": "selectGroup",
+            "type": "select",
             "name": "mode",
             "title": "paypal-standard::general.form.mode",
             "icon": "plane",
@@ -49,7 +49,7 @@
             "rules": "required|string"
         },
         {
-            "type": "selectGroup",
+            "type": "select",
             "name": "transaction",
             "title": "paypal-standard::general.form.transaction",
             "icon": "exchange-alt",
@@ -64,7 +64,7 @@
             "rules": "required|string"
         },
         {
-            "type": "accountSelectGroup",
+            "type": "account",
             "name": "account_id",
             "attributes": {
                 "required": "required"
@@ -72,7 +72,7 @@
             "rules": "required"
         },
         {
-            "type": "textGroup",
+            "type": "text",
             "name": "order",
             "title": "paypal-standard::general.form.order",
             "icon": "sort",
@@ -80,7 +80,7 @@
             "rules": "nullable|integer"
         },
         {
-            "type": "radioGroup",
+            "type": "toggle",
             "name": "customer",
             "title": "paypal-standard::general.form.customer",
             "enable": "general.yes",
@@ -89,7 +89,7 @@
             "rules": "required|integer"
         },
         {
-            "type": "radioGroup",
+            "type": "toggle",
             "name": "debug",
             "title": "paypal-standard::general.form.debug",
             "enable": "general.yes",

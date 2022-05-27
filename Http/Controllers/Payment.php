@@ -17,7 +17,7 @@ class Payment extends PaymentController
 
     public $type = 'redirect';
 
-    public function show(Document $invoice, PaymentRequest $request)
+    public function show(Document $invoice, PaymentRequest $request, $cards = [])
     {
         $setting = $this->setting;
 
@@ -30,8 +30,10 @@ class Payment extends PaymentController
         }
 
         $invoice_url = $this->getInvoiceUrl($invoice);
+        $return_url = $this->getReturnUrl($invoice);
+        $confirm_url = $this->getConfirmUrl($invoice);
 
-        $html = view('paypal-standard::show', compact('setting', 'invoice', 'invoice_url'))->render();
+        $html = view('paypal-standard::show', compact('setting', 'invoice', 'invoice_url', 'return_url', 'confirm_url'))->render();
 
         return response()->json([
             'code' => $setting['code'],
@@ -66,13 +68,15 @@ class Payment extends PaymentController
 
         if ($success) {
             flash($message)->success();
+
+            $url = $this->getFinishUrl($invoice);
         } else {
             flash($message)->warning();
+
+            $url = $this->getInvoiceUrl($invoice);
         }
 
-        $invoice_url = $this->getInvoiceUrl($invoice);
-
-        return redirect($invoice_url);
+        return redirect($url);
     }
 
     public function complete(Document $invoice, Request $request)
