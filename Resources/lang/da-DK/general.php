@@ -11,7 +11,7 @@ return [
         'debug'         => 'Fejlfinde',
         'transaction'   => 'Transaktion',
         'customer'      => 'Vis til kunde',
-        'order'         => 'Bestille',
+        'order'         => 'Rækkefølge',
     ],
 
     'test_mode'         => 'Advarsel: Betalingsgatewayen er i \'Sandbox Mode\'. Din konto bliver ikke debiteret.',
