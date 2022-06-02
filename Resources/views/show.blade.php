@@ -23,7 +23,7 @@
                 <?php $i = 1; ?>
                 @foreach ($invoice->items as $item)
                     <input type="hidden" name="item_name_{{ $i }}" value="{{ $item->name }}" />
-                    <input type="hidden" name="amount_{{ $i }}" value="{{ $invoice->amount }}" />
+                    <input type="hidden" name="amount_{{ $i }}" value="{{ $item->price }}" />
                     <input type="hidden" name="quantity_{{ $i }}" value="{{ $item->quantity }}" />
                     <?php $i++; ?>
                 @endforeach
@@ -39,8 +39,8 @@
                 <input type="hidden" name="no_note" value="1" />
                 <input type="hidden" name="no_shipping" value="1" />
                 <input type="hidden" name="charset" value="utf-8" />
-                <input type="hidden" name="return" value="{{ route('portal.paypal-standard.invoices.return', $invoice->id) }}" />
-                <input type="hidden" name="notify_url" value="{{ route('portal.paypal-standard.invoices.complete', $invoice->id) }}" />
+                <input type="hidden" name="return" value="{{ $return_url }}" />
+                <input type="hidden" name="notify_url" value="{{ $confirm_url }}" />
                 <input type="hidden" name="cancel_return" value="{{ $invoice_url }}" />
                 <input type="hidden" name="paymentaction" value="{{ $setting['transaction'] }}" />
                 <input type="hidden" name="custom" value="{{ $invoice->id }}" />
