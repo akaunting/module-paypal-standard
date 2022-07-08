@@ -59,7 +59,6 @@ class Main extends Provider
         }
 
         $routes = [
-            'guest.php',
             'portal.php',
             'signed.php',
         ];

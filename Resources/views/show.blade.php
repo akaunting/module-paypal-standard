@@ -30,10 +30,10 @@
                 <input type="hidden" name="currency_code" value="{{ $invoice->currency_code}}" />
                 <input type="hidden" name="first_name" value="{{ $invoice->first_name }}" />
                 <input type="hidden" name="last_name" value="{{ $invoice->last_name }}" />
-                <input type="hidden" name="address1" value="{{ $invoice->customer_address }}" />
+                <input type="hidden" name="address1" value="{{ $invoice->contact_address }}" />
                 <input type="hidden" name="address_override" value="0" />
-                <input type="hidden" name="email" value="{{ $invoice->customer_email }}" />
-                <input type="hidden" name="invoice" value="{{ $invoice->id . '-' . $invoice->customer_name }}" />
+                <input type="hidden" name="email" value="{{ $invoice->contact_email }}" />
+                <input type="hidden" name="invoice" value="{{ $invoice->id . '-' . $invoice->contact_name }}" />
                 <input type="hidden" name="lc" value="{{ $setting['language'] }}" />
                 <input type="hidden" name="rm" value="2" />
                 <input type="hidden" name="no_note" value="1" />

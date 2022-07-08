@@ -33,53 +33,35 @@ class Payment extends PaymentController
         $return_url = $this->getReturnUrl($invoice);
         $confirm_url = $this->getConfirmUrl($invoice);
 
-        $html = view('paypal-standard::show', compact('setting', 'invoice', 'invoice_url', 'return_url', 'confirm_url'))->render();
-
         return response()->json([
             'code' => $setting['code'],
             'name' => $setting['name'],
             'description' => trans('paypal-standard::general.description'),
             'redirect' => false,
-            'html' => $html,
+            'html' => view('paypal-standard::show', compact('setting', 'invoice', 'invoice_url', 'return_url', 'confirm_url'))->render(),
         ]);
     }
 
     public function return(Document $invoice, Request $request)
     {
-        $success = true;
+        if ($request['payment_status'] === 'Completed') {
+            $this->setReference($invoice, $request->id);
 
-        switch ($request['payment_status']) {
-            case 'Completed':
-                $message = trans('messages.success.added', ['type' => trans_choice('general.payments', 1)]);
-                break;
-            case 'Canceled_Reversal':
-            case 'Denied':
-            case 'Expired':
-            case 'Failed':
-            case 'Pending':
-            case 'Processed':
-            case 'Refunded':
-            case 'Reversed':
-            case 'Voided':
-                $message = trans('messages.error.added', ['type' => trans_choice('general.payments', 1)]);
-                $success = false;
-                break;
+            $this->finish($invoice, $request);
+
+            return redirect($this->getFinishUrl($invoice));
         }
 
-        if ($success) {
-            flash($message)->success();
+        if (in_array($request['payment_status'], ['Pending', 'Canceled_Reversal', 'Denied', 'Expired', 'Failed', 'Processed', 'Refunded', 'Reversed', 'Voided'])) {
+            $message = $request['payment_status'] === 'Pending' ? trans('paypal-standard::general.payment.pending') : trans('paypal-standard::general.payment.not_added');
 
-            $url = $this->getFinishUrl($invoice);
-        } else {
             flash($message)->warning();
 
-            $url = $this->getInvoiceUrl($invoice);
+            return redirect($this->getInvoiceUrl($invoice));
         }
-
-        return redirect($url);
     }
 
-    public function complete(Document $invoice, Request $request)
+    public function confirm(Document $invoice, Request $request)
     {
         $setting = $this->setting;
 
@@ -91,7 +73,7 @@ class Payment extends PaymentController
             return;
         }
 
-        $url = ($setting['mode'] == 'live') ? 'https://ipnpb.paypal.com/cgi-bin/webscr' : 'https://www.sandbox.paypal.com/cgi-bin/webscr';
+        $url = ($setting['mode'] == 'live') ? 'https://ipnpb.paypal.com/cgi-bin/webscr' : 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr';
 
         $client = new Client(['verify' => false]);
 
@@ -104,7 +86,7 @@ class Payment extends PaymentController
         $response = $client->post($url, $paypal_request);
 
         if ($response->getStatusCode() != 200) {
-            $paypal_log->info('PAYPAL_STANDARD :: CURL failed ', $response->getBody()->getContents());
+            $paypal_log->info('PAYPAL_STANDARD :: CURL failed ' . $response->getBody()->getContents());
         } else {
             $response = $response->getBody()->getContents();
         }
