@@ -14,6 +14,11 @@ return [
         'order'         => 'Commande',
     ],
 
+    'payment' => [
+        'pending'       => 'Le paiement est en attente',
+        'not_added'     => 'Paiement non ajouté!',
+    ],
+
     'test_mode'         => 'Avertissement: La passerelle de paiement est en mode \'Bac à sable\'. Votre compte ne sera pas débité.',
     //'description'       => 'Pay with PAYPAL',
 
