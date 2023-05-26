@@ -98,5 +98,11 @@
             "rules": "required|integer"
         }
     ],
-    "extra-modules": {}
+    "extra-modules": {},
+    "routes": {
+        "redirect_after_install": [
+            "settings.module.edit",
+            "paypal-standard"
+        ]
+    }
 }
