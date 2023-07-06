@@ -1,7 +1,7 @@
 {
     "alias": "paypal-standard",
     "icon": "simple-icons-paypal",
-    "version": "2.0.1",
+    "version": "3.0.1",
     "active": 1,
     "providers": [
         "Modules\\PaypalStandard\\Providers\\Event",
