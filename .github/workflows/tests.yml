@@ -14,26 +14,28 @@ jobs:
 
     strategy:
       matrix:
-        php: ['7.3', '7.4']
+        php: ['8.1', '8.2']
 
     steps:
       - name: Checkout Akaunting
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: akaunting/akaunting
 
       - name: Checkout Paypal Standard module
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: modules/PaypalStandard
 
       - name: Cache Composer
+                          
         uses: actions/cache@v1
         with:
           path: ~/.composer/cache/files
           key: php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
 
       - name: Setup PHP
+                          
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -41,10 +43,13 @@ jobs:
           coverage: none
 
       - name: Copy .env
+                          
         run: cp .env.testing .env
 
       - name: Install Composer
+                          
         run: cd modules/PaypalStandard ; composer test ; cd ../.. ; composer test
 
       - name: Execute tests
+                           
         run: php artisan test --parallel
