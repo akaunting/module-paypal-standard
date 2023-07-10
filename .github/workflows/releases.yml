@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - name: Checkout module
-        uses: actions/checkout@v2
+      - name: Checkout module          
+        uses: actions/checkout@v3
 
-      - id: set_var
+      - id: set_var            
         run: |
           content=`cat ./module.json`
           # the following lines are only required for multi line json
@@ -26,7 +26,7 @@ jobs:
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
-      - name: Check version equality
+      - name: Check version equality             
         run: |
           if [ "${{fromJson(steps.set_var.outputs.moduleJson).version}}" == $RELEASE_VERSION ]; then
               exit 0
@@ -44,20 +44,20 @@ jobs:
 
     strategy:
       matrix:
-        php: ['7.3', '7.4']
+        php: ['8.1', '8.2']
 
     steps:
-      - name: Checkout Akaunting
-        uses: actions/checkout@v2
+      - name: Checkout Akaunting                
+        uses: actions/checkout@v3
         with:
           repository: akaunting/akaunting
 
-      - name: Checkout module to tmp path
-        uses: actions/checkout@v2
+      - name: Checkout module to tmp path      
+        uses: actions/checkout@v3
         with:
           path: tmp-path-for-module
 
-      - id: set_var
+      - id: set_var          
         run: |
           content=`cat ./tmp-path-for-module/module.json`
           # the following lines are only required for multi line json
@@ -67,7 +67,7 @@ jobs:
           # end of optional handling for multi line json
           echo "::set-output name=moduleJson::$content"
 
-      - name: Create module folder name which is PascalCase
+      - name: Create module folder name which is PascalCase        
         run: |
           MODULE_FOLDER_NAME=$(echo -n ${{fromJson(steps.set_var.outputs.moduleJson).alias}} | sed -r 's/(^|-)([a-z])/\U\2/g')
           echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
@@ -76,7 +76,7 @@ jobs:
         run: rm -rf tmp-path-for-module
 
       - name: Checkout module
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: modules/${{ env.MODULE_FOLDER_NAME }}
 
@@ -86,20 +86,20 @@ jobs:
           path: ~/.composer/cache/files
           key: php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
 
-      - name: Setup PHP
+      - name: Setup PHP        
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: bcmath, ctype, dom, fileinfo, intl, gd, json, mbstring, pdo, pdo_sqlite, openssl, sqlite, xml, zip
           coverage: none
 
-      - name: Copy .env
+      - name: Copy .env           
         run: cp .env.testing .env
 
-      - name: Install Composer
+      - name: Install Composer 
         run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; composer test ; cd ../.. ; composer test
 
-      - name: Execute tests
+      - name: Execute tests     
         run: php artisan test --parallel
 
   build:
@@ -110,12 +110,12 @@ jobs:
 
     steps:
       - name: Checkout Akaunting
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: akaunting/akaunting
 
       - name: Checkout module to tmp path
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: tmp-path-for-module
 
@@ -138,7 +138,7 @@ jobs:
           echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
 
       - name: Checkout module
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: modules/${{ env.MODULE_FOLDER_NAME }}
 
@@ -146,12 +146,12 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.composer/cache/files
-          key: php-7.3-composer-${{ hashFiles('composer.json') }}
+          key: php-8.1-composer-${{ hashFiles('composer.json') }}
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '7.3'
+          php-version: '8.1'
           extensions: bcmath, ctype, dom, fileinfo, intl, gd, json, mbstring, pdo, pdo_sqlite, openssl, sqlite, xml, zip
           coverage: none
 
@@ -166,24 +166,27 @@ jobs:
 
       - name: Run npm install for the module
         run: |
+                                                                             
           cd "modules/${{ env.MODULE_FOLDER_NAME }}"
           npm install
 
       - name: Compile module assets
         run: |
+                                                                              
+                         
           cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+                         
           npm run production
-
-      - name: Install zip
+      - name: Install zip          
         run: sudo apt install zip
 
-      - name: Delete sass folder
-        run: |
+      - name: Delete sass folder            
+        run: |                                                               
           cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets"
           rm -rf sass
 
       - name: Delete mix-manifest.json file
-        run: |
+        run: |                                                                 
           cd "modules/${{ env.MODULE_FOLDER_NAME }}"
           rm -f mix-manifest.json
 
@@ -192,10 +195,11 @@ jobs:
           cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets/js"
           find . -type f ! -name '*.min.js' -delete
 
-      - name: ZIP
+      - name: ZIP               
         run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; zip -r ../../final-build.zip . * -x '*.git*' -x '*node_modules*' -x 'composer.json' -x 'composer.lock' -x 'crowdin.yml' -x 'package-lock.json' -x 'package.json' -x 'README.md' -x 'webpack.mix.js' ; cd ..
         
       - uses: actions/upload-artifact@master
+
         with:
           name: final-build
           path: ${{ github.workspace }}/final-build.zip
@@ -238,12 +242,14 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
 
-      - name: Upload to Akaunting Site
+      - name: Upload to Akaunting Site   
         run: |
           curl \
             -H "Authorization: Bearer ${{ secrets.AKAUNTING_SITE_AUTH_BEARER }}" \
+                                                 
             -H "Module-Version: ${{fromJson(steps.set_var.outputs.moduleJson).version}}" \
             -F "file=@./${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip" \
+                                                       
             --retry 5 \
             --retry-delay 60 \
             ${{ secrets.AKAUNTING_SITE_API_DOMAIN }}/${{ secrets.AKAUNTING_SITE_API_MODULES_ENDPOINT }}/${{fromJson(steps.set_var.outputs.moduleJson).alias}}
@@ -255,17 +261,17 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@master          
         with:
           name: final-build
 
-      - name: Install unzip
+      - name: Install unzip    
         run: sudo apt install unzip
 
-      - name: UNZIP
+      - name: UNZIP    
         run: unzip final-build.zip -d src
 
-      - id: set_var
+      - id: set_var       
         run: |
           content=`cat ./src/module.json`
           # the following lines are only required for multi line json
