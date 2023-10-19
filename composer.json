@@ -1,4 +1,7 @@
 {
+    "config": {
+        "autoloader-suffix": "PaypalStandard"
+    },
     "name": "akaunting/module-paypal-standard",
     "description": "PayPal Standard app for Akaunting",
     "homepage": "https://akaunting.com",
