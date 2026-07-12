@@ -2,22 +2,18 @@ name: Releases
 
 on:
   release:
-    types: [released, prereleased]
+    types: [released]
 
 jobs:
   check-json-version:
 
     runs-on: ubuntu-20.04
 
-    timeout-minutes: 5
-
     steps:
       - name: Checkout module
-        timeout-minutes: 1
         uses: actions/checkout@v4
 
       - id: set_var
-        timeout-minutes: 1
         run: |
           content=`cat ./module.json`
           # the following lines are only required for multi line json
@@ -27,36 +23,16 @@ jobs:
           # end of optional handling for multi line json
           echo "::set-output name=moduleJson::$content"
 
-      - name: Set release version
-        timeout-minutes: 1
-        id: release_version
-        run: |
-          echo "::set-output name=version::${GITHUB_REF#refs/*/}"
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
-      - name: Check version equality
-        timeout-minutes: 1
-        id: version_status
+      - name: Check version equality-
         run: |
-          if [ "${{fromJson(steps.set_var.outputs.moduleJson).version}}" == ${{steps.release_version.outputs.version}} ]; then
-              echo "::set-output name=status::e"
+          if [ "${{fromJson(steps.set_var.outputs.moduleJson).version}}" == $RELEASE_VERSION ]; then
+              exit 0
           else
-              echo "::set-output name=status::ne"
+              exit 1
           fi
-
-      - name: Version bump
-        timeout-minutes: 1
-        if: steps.version_status.outputs.status == 'ne'
-        run: |
-          tmp=$(mktemp)
-          jq --tab --indent 4 --arg a "${{steps.release_version.outputs.version}}" '.version = $a' module.json > "$tmp" && mv "$tmp" module.json
-
-      - name: Commit changes
-        timeout-minutes: 1
-        if: steps.version_status.outputs.status == 'ne'
-        uses: EndBug/add-and-commit@v7
-        with:
-          message: 'version bump'
-          branch: master
 
   tests:
 
@@ -66,27 +42,22 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    timeout-minutes: 40
-
     strategy:
       matrix:
         php: ['8.1', '8.2', '8.3']
 
     steps:
       - name: Checkout Akaunting
-        timeout-minutes: 1
         uses: actions/checkout@v4
         with:
           repository: akaunting/akaunting
 
       - name: Checkout module to tmp path
-        timeout-minutes: 1
         uses: actions/checkout@v4
         with:
           path: tmp-path-for-module
 
       - id: set_var
-        timeout-minutes: 1
         run: |
           content=`cat ./tmp-path-for-module/module.json`
           # the following lines are only required for multi line json
@@ -95,54 +66,40 @@ jobs:
           content="${content//$'\r'/'%0D'}"
           # end of optional handling for multi line json
           echo "::set-output name=moduleJson::$content"
+
       - name: Create module folder name which is PascalCase
-        timeout-minutes: 1
         run: |
           MODULE_FOLDER_NAME=$(echo -n ${{fromJson(steps.set_var.outputs.moduleJson).alias}} | sed -r 's/(^|-)([a-z])/\U\2/g')
           echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
+
+      - name: Remove the tmp folder
+        run: rm -rf tmp-path-for-module
+
       - name: Checkout module
-        timeout-minutes: 1
         uses: actions/checkout@v4
         with:
           path: modules/${{ env.MODULE_FOLDER_NAME }}
 
-      - name: Download the extra modules
-        timeout-minutes: 10
-        run: |
-          for k in $(jq -r '."extra-modules" | keys | .[]' tmp-path-for-module/module.json); do
-            modName=$(echo -n $k | sed -r 's/(^|-)([a-z])/\U\2/g')
-            mkdir -p modules/$modName
-            git clone https://${{ secrets.AKAUNTING_OFFICIAL_TOKEN }}:x-oauth-basic@github.com/akaunting/module-${k}.git modules/$modName
-          done
-      - name: Remove the tmp folder
-        timeout-minutes: 1
-        run: rm -rf tmp-path-for-module
-
       - name: Cache Composer
-        timeout-minutes: 1
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache/files
           key: php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
 
       - name: Setup PHP
-        timeout-minutes: 1
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: bcmath, ctype, dom, fileinfo, intl, gd, json, mbstring, pdo, pdo_sqlite, openssl, sqlite, xml, zip
           coverage: none
 
-      - name: Copy .env
-        timeout-minutes: 1
+      - name: Copy .env           
         run: cp .env.testing .env
 
       - name: Install Composer
-        timeout-minutes: 5
         run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; composer test ; cd ../.. ; composer test
 
       - name: Execute tests
-        timeout-minutes: 30
         run: php artisan test --parallel
 
   build:
@@ -151,23 +108,18 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    timeout-minutes: 25
-
     steps:
       - name: Checkout Akaunting
-        timeout-minutes: 1
         uses: actions/checkout@v4
         with:
           repository: akaunting/akaunting
 
       - name: Checkout module to tmp path
-        timeout-minutes: 1
         uses: actions/checkout@v4
         with:
           path: tmp-path-for-module
 
       - id: set_var
-        timeout-minutes: 1
         run: |
           content=`cat ./tmp-path-for-module/module.json`
           # the following lines are only required for multi line json
@@ -178,107 +130,76 @@ jobs:
           echo "::set-output name=moduleJson::$content"
 
       - name: Remove the tmp folder
-        timeout-minutes: 1
         run: rm -rf tmp-path-for-module
 
       - name: Create module folder name which is PascalCase
-        timeout-minutes: 1
         run: |
           MODULE_FOLDER_NAME=$(echo -n ${{fromJson(steps.set_var.outputs.moduleJson).alias}} | sed -r 's/(^|-)([a-z])/\U\2/g')
           echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
 
       - name: Checkout module
-        timeout-minutes: 1
         uses: actions/checkout@v4
         with:
           path: modules/${{ env.MODULE_FOLDER_NAME }}
 
       - name: Cache Composer
-        timeout-minutes: 1
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache/files
           key: php-8.1-composer-${{ hashFiles('composer.json') }}
 
       - name: Setup PHP
-        timeout-minutes: 1
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
           extensions: bcmath, ctype, dom, fileinfo, intl, gd, json, mbstring, pdo, pdo_sqlite, openssl, sqlite, xml, zip
           coverage: none
 
+      - name: Copy .env
+        run: cp .env.testing .env
+
       - name: Install Composer
-        timeout-minutes: 1
+        run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; composer install --no-dev ; cd ../.. ; composer install --no-dev
+
+      - name: Run npm install for Akaunting
+        run: npm install
+
+      - name: Run npm install for the module
         run: |
-          if [ -f modules/${{ env.MODULE_FOLDER_NAME }}/composer.json ]; then
-              cd "modules/${{ env.MODULE_FOLDER_NAME }}"
-              composer install --no-dev
-          fi
+                                                                             
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+          npm install
 
-      - name: Install and run NPM
-        timeout-minutes: 15
+      - name: Compile module assets
         run: |
-          if [ -f modules/${{ env.MODULE_FOLDER_NAME }}/webpack.mix.js ]; then
-              npm install
-              cd "modules/${{ env.MODULE_FOLDER_NAME }}"
-              npm install
-              npm run production
-          fi
-
-      - name: Tmp apt fix
-        timeout-minutes: 1
-        run: sudo apt --fix-broken install
-
-      - name: Install zip
-        timeout-minutes: 1
+                                                                              
+                         
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+                         
+          npm run production
+      - name: Install zip          
         run: sudo apt install zip
 
-      - name: Delete sass folder
-        timeout-minutes: 1
+      - name: Delete sass folder            
+        run: |                                                               
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets"
+          rm -rf sass
+
+      - name: Delete mix-manifest.json file
         run: |
-          if [ -d modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets ]; then
-              cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets"
-              rm -rf sass
-          fi
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}"
+          rm -f mix-manifest.json
 
       - name: Delete non .min.js files
-        timeout-minutes: 1
         run: |
-          if [ -d modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets/js ]; then
-              cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets/js"
-              find . -type f ! -name '*.min.js' -delete
-          fi
-
-      - name: Set release version
-        timeout-minutes: 1
-        id: release_version
-        run: |
-          echo "::set-output name=version::${GITHUB_REF#refs/*/}"
-
-      - name: Check version equality
-        timeout-minutes: 1
-        id: version_status
-        run: |
-          if [ "${{fromJson(steps.set_var.outputs.moduleJson).version}}" == ${{steps.release_version.outputs.version}} ]; then
-              echo "::set-output name=status::e"
-          else
-              echo "::set-output name=status::ne"
-          fi
-
-      - name: Version bump
-        timeout-minutes: 1
-        if: steps.version_status.outputs.status == 'ne'
-        run: |
-          tmp=$(mktemp)
-          jq --tab --indent 4 --arg a "${{steps.release_version.outputs.version}}" '.version = $a' "modules/${{ env.MODULE_FOLDER_NAME }}/module.json" > "$tmp" && mv "$tmp" "modules/${{ env.MODULE_FOLDER_NAME }}/module.json"
+          cd "modules/${{ env.MODULE_FOLDER_NAME }}/Resources/assets/js"
+          find . -type f ! -name '*.min.js' -delete
 
       - name: ZIP
-        timeout-minutes: 2
-        run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; zip -r ../../final-build.zip . * -x '*.git*' -x '*node_modules*' -x '*Tests*' -x '*__EXTRA*' -x 'composer.json' -x 'composer.lock' -x 'crowdin.yml' -x 'package-lock.json' -x 'package.json' -x 'README.md' -x 'webpack.mix.js' -x 'mix-manifest.json' -x 'phpunit.xml' ; cd ..
-
+        run: cd "modules/${{ env.MODULE_FOLDER_NAME }}" ; zip -r ../../final-build.zip . * -x '*.git*' -x '*node_modules*' -x 'composer.json' -x 'composer.lock' -x 'crowdin.yml' -x 'package-lock.json' -x 'package.json' -x 'README.md' -x 'webpack.mix.js' ; cd ..
+        
       - uses: actions/upload-artifact@master
-        timeout-minutes: 3
+
         with:
           name: final-build
           path: ${{ github.workspace }}/final-build.zip
@@ -289,24 +210,18 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    timeout-minutes: 10
-
     steps:
       - uses: actions/download-artifact@master
-        timeout-minutes: 5
         with:
           name: final-build
 
       - name: Install unzip
-        timeout-minutes: 1
         run: sudo apt install unzip
 
       - name: UNZIP
-        timeout-minutes: 3
         run: unzip final-build.zip -d src
 
       - id: set_var
-        timeout-minutes: 1
         run: |
           content=`cat ./src/module.json`
           # the following lines are only required for multi line json
@@ -316,34 +231,25 @@ jobs:
           # end of optional handling for multi line json
           echo "::set-output name=moduleJson::$content"
 
-      - name: Set release version
-        timeout-minutes: 1
-        id: release_version
-        run: |
-          echo "::set-output name=version::${GITHUB_REF#refs/*/}"
-
       - name: Rename zip archive
-        timeout-minutes: 2
-        run: mv final-build.zip ${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{steps.release_version.outputs.version}}.zip
+        run: mv final-build.zip ${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip
 
       - name: Upload to release
-        timeout-minutes: 5
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{steps.release_version.outputs.version}}.zip
+          file: ${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip
           tag: ${{ github.ref }}
           overwrite: true
 
       - name: Upload to Akaunting Site
-        timeout-minutes: 5
         run: |
           curl \
             -H "Authorization: Bearer ${{ secrets.AKAUNTING_SITE_AUTH_BEARER }}" \
-            -F "stage=${{github.event.action}}" \
-            -F "version=${{steps.release_version.outputs.version}}" \
-            -F "file=@./${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{steps.release_version.outputs.version}}.zip" \
-            -F "event=@$(echo -n $GITHUB_EVENT_PATH)" \
+                                                 
+            -H "Module-Version: ${{fromJson(steps.set_var.outputs.moduleJson).version}}" \
+            -F "file=@./${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{fromJson(steps.set_var.outputs.moduleJson).version}}.zip" \
+                                                       
             --retry 5 \
             --retry-delay 60 \
             ${{ secrets.AKAUNTING_SITE_API_DOMAIN }}/${{ secrets.AKAUNTING_SITE_API_MODULES_ENDPOINT }}/${{fromJson(steps.set_var.outputs.moduleJson).alias}}
@@ -354,24 +260,18 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    timeout-minutes: 60
-
     steps:
       - uses: actions/download-artifact@master
-        timeout-minutes: 5
         with:
           name: final-build
 
       - name: Install unzip
-        timeout-minutes: 1
         run: sudo apt install unzip
 
       - name: UNZIP
-        timeout-minutes: 1
         run: unzip final-build.zip -d src
 
       - id: set_var
-        timeout-minutes: 1
         run: |
           content=`cat ./src/module.json`
           # the following lines are only required for multi line json
@@ -381,52 +281,12 @@ jobs:
           # end of optional handling for multi line json
           echo "::set-output name=moduleJson::$content"
 
-      - name: Set release version
-        timeout-minutes: 1
-        id: release_version
-        run: |
-          echo "::set-output name=version::${GITHUB_REF#refs/*/}"
-
-      - name: Create module folder name which is PascalCase
-        timeout-minutes: 1
-        run: |
-          MODULE_FOLDER_NAME=$(echo -n ${{fromJson(steps.set_var.outputs.moduleJson).alias}} | sed -r 's/(^|-)([a-z])/\U\2/g')
-          echo "MODULE_FOLDER_NAME=${MODULE_FOLDER_NAME}" >> $GITHUB_ENV
-
-      - name: Tell Envoyer about this
-        timeout-minutes: 1
-        if: github.event.action == 'released'
-        run: |
-          curl -X POST \
-            'https://envoyer.akaunting.biz/api/v1/jobs/module' \
-            -H 'Accept: */*' \
-            -H 'Authorization: Bearer ${{ secrets.ENVOYER_TOKEN }}' \
-            -H 'Content-Type: application/json' \
-            -d '{
-            "file": "${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{steps.release_version.outputs.version}}.zip",
-            "version": "${{steps.release_version.outputs.version}}",
-            "alias": "${{fromJson(steps.set_var.outputs.moduleJson).alias}}",
-            "stage": "${{github.event.action}}",
-            "repo": "${{github.repository}}",
-            "name": "${{ env.MODULE_FOLDER_NAME }}",
-            "gh_username": "${{github.actor}}"
-          }'
-
-      - name: Tell Envoyer about this
-        timeout-minutes: 1
-        if: github.event.action != 'released'
-        run: |
-          curl -X POST \
-            'https://envoyer.akaunting.biz/api/v1/jobs/module-dev' \
-            -H 'Accept: */*' \
-            -H 'Authorization: Bearer ${{ secrets.ENVOYER_TOKEN }}' \
-            -H 'Content-Type: application/json' \
-            -d '{
-            "file": "${{fromJson(steps.set_var.outputs.moduleJson).alias}}-v${{steps.release_version.outputs.version}}.zip",
-            "version": "${{steps.release_version.outputs.version}}",
-            "alias": "${{fromJson(steps.set_var.outputs.moduleJson).alias}}",
-            "stage": "${{github.event.action}}",
-            "repo": "${{github.repository}}",
-            "name": "${{ env.MODULE_FOLDER_NAME }}",
-            "gh_username": "${{github.actor}}"
-          }'
+      - name: Update the Cloud
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AKAUNTING_CLOUD_HOST }}
+          username: ${{ secrets.AKAUNTING_CLOUD_USERNAME }}
+          key: ${{ secrets.AKAUNTING_CLOUD_SSH_PRIVATE }}
+          script: |
+            cd /${{ secrets.AKAUNTING_CLOUD_PATH }}
+            ${{ secrets.AKAUNTING_CLOUD_UPDATE_COMMAND }} ${{fromJson(steps.set_var.outputs.moduleJson).alias}} 1 ${{fromJson(steps.set_var.outputs.moduleJson).version}}
