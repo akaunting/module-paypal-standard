@@ -17,6 +17,7 @@ return [
     'payment' => [
         'pending'       => 'Payment is pending',
         'not_added'     => 'Payment not added!',
+        'processing'    => 'Thank you! Your payment is being processed. You will be notified once it is confirmed.',
     ],
 
     'test_mode'         => 'Warning: The payment gateway is in \'Sandbox Mode\'. Your account will not be charged.',
