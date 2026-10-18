@@ -94,14 +94,11 @@ class Payment extends PaymentController
 
         $client = new Client(['verify' => false]);
 
-        $paypal_request['cmd'] = '_notify-validate';
-
-        foreach ($request->toArray() as $key => $value) {
-            $paypal_request[$key] = urlencode(html_entity_decode($value, ENT_QUOTES, 'UTF-8'));
-        }
-
         try {
-            $response = $client->post($url, $paypal_request);
+            $response = $client->post($url, [
+                'body' => 'cmd=_notify-validate&' . $request->getContent(),
+                'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+            ]);
         } catch (\Exception $e) {
             $paypal_log->info('PAYPAL_STANDARD :: CURL failed ' . $e->getMessage());
 
